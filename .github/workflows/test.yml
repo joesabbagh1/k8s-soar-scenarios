@@ -1,0 +1,35 @@
+name: E2E Scenarios Test
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Scenarios
+        uses: actions/checkout@v3
+
+      - name: Checkout k8s-soar (Solution)
+        uses: actions/checkout@v3
+        with:
+          repository: "joesabbagh1/k8s-soar"
+          path: "k8s-soar"
+
+      - name: Setup Kind Cluster
+        uses: helm/kind-action@v1.4.0
+
+      - name: Install k8s-soar Solution
+        run: |
+          cd k8s-soar
+          # ./scripts/helm-install.sh (mocked for now) 
+          # I think i want to use my homelab server
+          echo "k8s-soar solution installed"
+
+      - name: Run Scenarios
+        run: |
+          chmod +x ./scenarios/run-all.sh
+          ./scenarios/run-all.sh
