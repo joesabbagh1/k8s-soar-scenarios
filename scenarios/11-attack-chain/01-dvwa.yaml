@@ -12,7 +12,7 @@ metadata:
   namespace: security-lab
   labels:
     app: victim
-    scenario: "chain"
+    scenario: "11"
 spec:
   replicas: 1
   selector:
@@ -23,7 +23,7 @@ spec:
       labels:
         app: dvwa
         app.kubernetes.io/name: dvwa
-        scenario: "04"
+        scenario: "11"
     spec:
       containers:
         - name: dvwa
