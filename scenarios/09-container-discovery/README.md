@@ -1,95 +1,57 @@
-#!/usr/bin/env bash
+# Scenario 09 — Container and Resource Discovery
 
-set -euo pipefail
+**MITRE:** T1613 — Container and Resource Discovery
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+## Attack
 
-# shellcheck source=scripts/scenario-lib.sh
-source "${ROOT}/scripts/scenario-lib.sh"
+After compromising a Kubernetes container, an adversary performs **container and resource discovery** to understand the environment before launching further attacks. The attacker enumerates the pod hostname, namespace, service account files, environment variables, mounted file systems, network configuration, DNS settings, and Kubernetes API endpoint. This reconnaissance helps identify potential targets and available privileges within the cluster.
 
-SCENARIO_ID="09"
+## Scenario flow
 
-echo "Deploying Scenario 09 - Container and Resource Discovery..."
+| Step | Layer | What happens |
+|------|-------|--------------|
+| 1. **Attack** | Adversary | A pod named **`scenario-09-discovery`** is deployed in the **`security-lab`** namespace and executes common discovery commands inside the container. |
+| 2. **Discovery** | Container | The attacker gathers the hostname, namespace, ServiceAccount information, environment variables, mounted volumes, network interfaces, routing table, DNS configuration, and Kubernetes API endpoint. |
+| 3. **Detection** | Runtime Security | Falco or other runtime monitoring solutions can detect execution of discovery commands and access to Kubernetes ServiceAccount files. |
+| 4. **Response (manual demo)** | Operator / SOAR | Review pod logs, investigate the suspicious container, and delete or isolate the compromised pod to prevent additional reconnaissance. |
 
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Pod
-metadata:
-  name: scenario-09-discovery
-  namespace: ${SCENARIO_NS}
-  labels:
-    ${SCENARIO_LABEL_KEY}: "${SCENARIO_ID}"
-    scenario-target: "true"
-spec:
-  restartPolicy: Never
-  containers:
-  - name: attacker
-    image: busybox:1.36
-    command:
-    - sh
-    - -c
-    - |
-      echo "========== MITRE ATT&CK T1613 =========="
-      echo
+This scenario demonstrates the reconnaissance phase of a Kubernetes attack. The collected information may later be used for privilege escalation, credential theft, or lateral movement.
 
-      echo "[1] Hostname"
-      hostname
+## Run
 
-      echo
-      echo "[2] Namespace"
-      cat /var/run/secrets/kubernetes.io/serviceaccount/namespace
+```bash
+./run.sh
+```
 
-      echo
-      echo "[3] Service Account Files"
-      ls -l /var/run/secrets/kubernetes.io/serviceaccount
+## Expected evidence
 
-      echo
-      echo "[4] Environment Variables"
-      env
+| Tool | Expected |
+|------|----------|
+| Kubernetes | Pod `scenario-09-discovery` is created successfully |
+| Pod Logs | Hostname, namespace, ServiceAccount files, environment variables, network information, and Kubernetes API endpoint are displayed |
+| Falco (optional) | Alerts for discovery commands or ServiceAccount access |
+| SOAR | Manual investigation and containment demonstration |
 
-      echo
-      echo "[5] Mounted File Systems"
-      mount
+## Manual investigation
 
-      echo
-      echo "[6] Network Interfaces"
-      ip addr
+```bash
+kubectl logs -n security-lab scenario-09-discovery
+```
 
-      echo
-      echo "[7] Routing Table"
-      ip route
+```bash
+kubectl exec -it -n security-lab scenario-09-discovery -- sh
+```
 
-      echo
-      echo "[8] DNS Configuration"
-      cat /etc/resolv.conf
+## Capture
 
-      echo
-      echo "[9] Kubernetes API"
-      echo \$KUBERNETES_SERVICE_HOST
-      echo \$KUBERNETES_SERVICE_PORT
+```bash
+kubectl get pod -n security-lab scenario-09-discovery -o wide
+```
 
-      echo
-      echo "Discovery completed."
+```bash
+kubectl logs -n security-lab scenario-09-discovery
+```
 
-      sleep 3600
-EOF
-
-echo
-echo "Waiting for Pod..."
-
-kubectl wait \
-  --for=condition=Ready \
-  pod/scenario-09-discovery \
-  -n "$SCENARIO_NS" \
-  --timeout=90s || true
-
-echo
-kubectl get pod scenario-09-discovery -n "$SCENARIO_NS"
-
-echo
-echo "View Results:"
-echo "kubectl logs -n $SCENARIO_NS scenario-09-discovery"
-
-echo
-echo "Open Shell:"
-echo "kubectl exec -it -n $SCENARIO_NS scenario-09-discovery -- sh"
+```bash
+kubectl describe pod -n security-lab scenario-09-discovery
+```
